@@ -36,6 +36,7 @@
 #include "boards.h"
 #include "ble_error_log.h"
 #include "ble_debug_assert_handler.h"
+#include "spi.h"
 
 #define WAKEUP_BUTTON_PIN               BUTTON_SELECT                               /**< Button used to wake up the application. */
 
@@ -72,6 +73,7 @@ static ble_gap_sec_params_t             m_sec_params;                           
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
 
+static uint32_t * p_spi0_base_address;
 
 /**@brief     Error handler function, which is called when an error has occurred.
  *
@@ -192,11 +194,16 @@ static void advertising_init(void)
 /**@snippet [Handling the data received over BLE] */
 void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
 {
-//    for (int i = 0; i < length; i++)
-//    {
-//        simple_uart_put(p_data[i]);
-//    }
-//    simple_uart_put('\n');
+    if (p_data[0] == 0x1) {
+			  // send command to external flash
+        spi_master_tx_rx(p_spi0_base_address, SPI0_SS0, length-1, p_data+1, p_data+1);  
+		
+        uint32_t err_code = ble_nus_send_string(&m_nus, p_data+1, length-1);
+        if (err_code != NRF_ERROR_INVALID_STATE)
+        {
+            APP_ERROR_CHECK(err_code);
+        }
+	  }
 }
 /**@snippet [Handling the data received over BLE] */
 
@@ -423,6 +430,13 @@ static void buttons_init(void)
                              NRF_GPIO_PIN_SENSE_LOW);    
 }
 
+/**@brief  Function for configuring the spi
+ */
+static void spi_init(void)
+{
+    p_spi0_base_address = spi_master_init(SPI0, SPI_MODE0, false);
+}
+
 /**@brief  Function for placing the application in low power state while waiting for events.
  */
 static void power_manage(void)
@@ -438,6 +452,7 @@ int main(void)
     // Initialize
     timers_init();
     buttons_init();
+    spi_init();
     ble_stack_init();
     gap_params_init();
     services_init();

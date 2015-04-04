@@ -26,8 +26,9 @@
 #define SPI0_SCK     11u                                     /**< SPI clock GPIO pin number. */
 #define SPI0_MOSI    12u                                     /**< SPI Master Out Slave In GPIO pin number. */
 #define SPI0_MISO    9u                                      /**< SPI Master In Slave Out GPIO pin number. */
-#define SPI0_SS0     8u                                     /**< SPI Slave Select GPIO pin number. */
+#define SPI0_SS0     8u                                      /**< SPI Slave Select GPIO pin number for device 0 */
+#define SPI0_SS1     23u                                     /**< SPI Slave Select GPIO pin number for device 1 */
 
-#define TIMEOUT_COUNTER         0x3000uL                                /**< Timeout for SPI transaction in units of loop iterations. */
+#define TIMEOUT_COUNTER         0x3000uL                     /**< Timeout for SPI transaction in units of loop iterations. */
 
 #endif
