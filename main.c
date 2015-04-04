@@ -203,7 +203,35 @@ void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
         {
             APP_ERROR_CHECK(err_code);
         }
-	  }
+	  } else if (p_data[0] == 0x10) {
+			  uint8_t txrx_data[1 + 3 + 16];
+			  uint8_t data_size;
+			  uint32_t address = (p_data[1]<<16) | p_data[2] << 8 | p_data[3];
+			  uint32_t size = (p_data[4]<<16) | p_data[5] << 8 | p_data[6];
+			  uint32_t end = address + size;
+				do {
+					  data_size = (end - address > 16 ? 16 : end - address);
+			      txrx_data[0] = 0x03; //read page
+					  txrx_data[1] = address >> 16 & 0xFF;
+					  txrx_data[2] = address >> 8 & 0xFF;
+					  txrx_data[3] = address & 0xFF;
+					  for(int i=0;i<16;i++){
+							  txrx_data[4+i] = 0;
+						}
+					
+            spi_master_tx_rx(p_spi0_base_address, SPI0_SS0, data_size + 4, txrx_data, txrx_data);
+					
+				    uint32_t err_code = ble_nus_send_string(&m_nus, txrx_data + 4, data_size);
+            if (err_code != NRF_ERROR_INVALID_STATE)
+            {
+                APP_ERROR_CHECK(err_code);
+            }
+						
+			      address += 16;
+				} while (address < end);
+			  
+				
+		}
 }
 /**@snippet [Handling the data received over BLE] */
 
