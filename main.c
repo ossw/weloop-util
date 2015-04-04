@@ -37,10 +37,7 @@
 #include "ble_error_log.h"
 #include "ble_debug_assert_handler.h"
 
-#define WAKEUP_BUTTON_PIN               BUTTON_0                                    /**< Button used to wake up the application. */
-
-#define ADVERTISING_LED_PIN_NO          LED_0                                       /**< LED to indicate advertising state. */
-#define CONNECTED_LED_PIN_NO            LED_1                                       /**< LED to indicate connected state. */
+#define WAKEUP_BUTTON_PIN               BUTTON_SELECT                               /**< Button used to wake up the application. */
 
 #define DEVICE_NAME                     "OSSW_SD_UP"                               /**< Name of device. Will be included in the advertising data. */
 
@@ -116,18 +113,6 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
 {
     app_error_handler(DEAD_BEEF, line_num, p_file_name);
 }
-
-
-/**@brief   Function for the LEDs initialization.
- *
- * @details Initializes all LEDs used by this application.
- */
-static void leds_init(void)
-{
-    nrf_gpio_cfg_output(ADVERTISING_LED_PIN_NO);
-    nrf_gpio_cfg_output(CONNECTED_LED_PIN_NO);
-}
-
 
 /**@brief   Function for Timer initialization.
  *
@@ -320,8 +305,6 @@ static void advertising_start(void)
 
     err_code = sd_ble_gap_adv_start(&adv_params);
     APP_ERROR_CHECK(err_code);
-
-    nrf_gpio_pin_set(ADVERTISING_LED_PIN_NO);
 }
 
 
@@ -338,14 +321,11 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_CONNECTED:
-            nrf_gpio_pin_set(CONNECTED_LED_PIN_NO);
-            nrf_gpio_pin_clear(ADVERTISING_LED_PIN_NO);
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
 
             break;
             
         case BLE_GAP_EVT_DISCONNECTED:
-            nrf_gpio_pin_clear(CONNECTED_LED_PIN_NO);
             m_conn_handle = BLE_CONN_HANDLE_INVALID;
 
             advertising_start();
@@ -386,8 +366,6 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         case BLE_GAP_EVT_TIMEOUT:
             if (p_ble_evt->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_ADVERTISEMENT)
             { 
-                nrf_gpio_pin_clear(ADVERTISING_LED_PIN_NO);
-
                 // Configure buttons with sense level low as wakeup source.
                 nrf_gpio_cfg_sense_input(WAKEUP_BUTTON_PIN,
                                          BUTTON_PULL,
@@ -445,7 +423,6 @@ static void buttons_init(void)
                              NRF_GPIO_PIN_SENSE_LOW);    
 }
 
-
 /**@brief  Function for placing the application in low power state while waiting for events.
  */
 static void power_manage(void)
@@ -459,7 +436,6 @@ static void power_manage(void)
 int main(void)
 {
     // Initialize
-    leds_init();
     timers_init();
     buttons_init();
     ble_stack_init();
