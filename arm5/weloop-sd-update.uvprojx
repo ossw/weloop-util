@@ -464,11 +464,6 @@
               <FilePath>C:\nrf51_sdk_v5_2_0\nrf51822\Source\sd_common\softdevice_handler.c</FilePath>
             </File>
             <File>
-              <FileName>simple_uart.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>C:\nrf51_sdk_v5_2_0\nrf51822\Source\simple_uart\simple_uart.c</FilePath>
-            </File>
-            <File>
               <FileName>app_timer.c</FileName>
               <FileType>1</FileType>
               <FilePath>C:\nrf51_sdk_v5_2_0\nrf51822\Source\app_common\app_timer.c</FilePath>
