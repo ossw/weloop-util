@@ -483,6 +483,11 @@
               <FileType>1</FileType>
               <FilePath>C:\nrf51_sdk_v5_2_0\nrf51822\Source\app_common\app_timer.c</FilePath>
             </File>
+            <File>
+              <FileName>pstorage.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>C:\nrf51_sdk_v5_2_0\nrf51822\Source\app_common\pstorage.c</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>

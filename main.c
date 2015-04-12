@@ -40,7 +40,7 @@
 
 #define WAKEUP_BUTTON_PIN               BUTTON_SELECT                               /**< Button used to wake up the application. */
 
-#define DEVICE_NAME                     "OSSW_SD_UP"                               /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "WELP_UTIL"                               /**< Name of device. Will be included in the advertising data. */
 
 #define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
@@ -69,11 +69,17 @@
 
 #define DEAD_BEEF                       0xDEADBEEF                                  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
+#define DATA_PACKET_SIZE								20
+
 static ble_gap_sec_params_t             m_sec_params;                               /**< Security requirements for this application. */
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
 
 static uint32_t * p_spi0_base_address;
+
+static uint32_t transmitCurrentAddress;
+static uint32_t transmitEndAddress;
+static uint32_t transmitMode = 0;
 
 /**@brief     Error handler function, which is called when an error has occurred.
  *
@@ -185,6 +191,73 @@ static void advertising_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
+void transmit_external_flash_data()
+{
+				if(transmitMode != 0x12) {
+						return;
+				}
+				
+			  uint8_t txrx_data[1 + 3 + DATA_PACKET_SIZE];
+			  uint8_t data_size;
+				do {
+					  data_size = (transmitEndAddress - transmitCurrentAddress > DATA_PACKET_SIZE ? DATA_PACKET_SIZE : transmitEndAddress - transmitCurrentAddress);
+			      txrx_data[0] = 0x03; //read page
+					  txrx_data[1] = transmitCurrentAddress >> 16 & 0xFF;
+					  txrx_data[2] = transmitCurrentAddress >> 8 & 0xFF;
+					  txrx_data[3] = transmitCurrentAddress & 0xFF;
+					  for(int i=0;i<DATA_PACKET_SIZE;i++){
+							  txrx_data[4+i] = 0;
+						}
+					
+            spi_master_tx_rx(p_spi0_base_address, SPI0_SS0, data_size + 4, txrx_data, txrx_data);
+					
+				    uint32_t err_code = ble_nus_send_string(&m_nus, txrx_data + 4, data_size);
+            if (err_code == BLE_ERROR_NO_TX_BUFFERS ||
+                err_code == NRF_ERROR_INVALID_STATE || 
+                err_code == BLE_ERROR_GATTS_SYS_ATTR_MISSING)
+						{
+						    return;
+						}
+						else if (err_code != NRF_SUCCESS) 
+						{
+								APP_ERROR_HANDLER(err_code);
+						}
+						
+			      transmitCurrentAddress += DATA_PACKET_SIZE;
+				} while (transmitCurrentAddress < transmitEndAddress);
+				transmitCurrentAddress = 0;
+				transmitEndAddress = 0;
+				transmitMode = 0;
+}
+
+void transmit_internal_memory_data()
+{
+				if(transmitMode != 0x10) {
+						return;
+				}
+				
+			  uint8_t data_size;
+				do {
+					  data_size = (transmitEndAddress - transmitCurrentAddress > DATA_PACKET_SIZE ? DATA_PACKET_SIZE : transmitEndAddress - transmitCurrentAddress);
+            
+				    uint32_t err_code = ble_nus_send_string(&m_nus, (uint8_t *)transmitCurrentAddress, data_size);
+            if (err_code == BLE_ERROR_NO_TX_BUFFERS ||
+                err_code == NRF_ERROR_INVALID_STATE || 
+                err_code == BLE_ERROR_GATTS_SYS_ATTR_MISSING)
+						{
+						    return;
+						}
+						else if (err_code != NRF_SUCCESS) 
+						{
+								APP_ERROR_HANDLER(err_code);
+						}
+						
+			      transmitCurrentAddress += DATA_PACKET_SIZE;
+				} while (transmitCurrentAddress < transmitEndAddress);
+				transmitCurrentAddress = 0;
+				transmitEndAddress = 0;
+				transmitMode = 0;
+}
 
 /**@brief    Function for handling the data from the Nordic UART Service.
  *
@@ -203,38 +276,22 @@ void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
         {
             APP_ERROR_CHECK(err_code);
         }
-	  } else if (p_data[0] == 0x10) {
-			  uint8_t txrx_data[1 + 3 + 16];
-			  uint8_t data_size;
-			  uint32_t address = (p_data[1]<<16) | p_data[2] << 8 | p_data[3];
+	  } else if (p_data[0] == 0x12) {
+			  transmitCurrentAddress = (p_data[1]<<16) | p_data[2] << 8 | p_data[3];
 			  uint32_t size = (p_data[4]<<16) | p_data[5] << 8 | p_data[6];
-			  uint32_t end = address + size;
-				do {
-					  data_size = (end - address > 16 ? 16 : end - address);
-			      txrx_data[0] = 0x03; //read page
-					  txrx_data[1] = address >> 16 & 0xFF;
-					  txrx_data[2] = address >> 8 & 0xFF;
-					  txrx_data[3] = address & 0xFF;
-					  for(int i=0;i<16;i++){
-							  txrx_data[4+i] = 0;
-						}
-					
-            spi_master_tx_rx(p_spi0_base_address, SPI0_SS0, data_size + 4, txrx_data, txrx_data);
-					
-				    uint32_t err_code = ble_nus_send_string(&m_nus, txrx_data + 4, data_size);
-            if (err_code != NRF_ERROR_INVALID_STATE)
-            {
-                APP_ERROR_CHECK(err_code);
-            }
-						
-			      address += 16;
-				} while (address < end);
-			  
-				
+			  transmitEndAddress = transmitCurrentAddress + size;
+			  transmitMode = 0x12;
+			
+			  transmit_external_flash_data();
+		} else if (p_data[0] == 0x10) {
+			  transmitCurrentAddress = (p_data[1]<<16) | p_data[2] << 8 | p_data[3];
+			  uint32_t size = (p_data[4]<<16) | p_data[5] << 8 | p_data[6];
+			  transmitEndAddress = transmitCurrentAddress + size;
+			  transmitMode = 0x10;
+			
+			  transmit_internal_memory_data();
 		}
 }
-/**@snippet [Handling the data received over BLE] */
-
 
 /**@brief Function for initializing services that will be used by the application.
  */
@@ -410,6 +467,14 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
                 err_code = sd_power_system_off();    
                 APP_ERROR_CHECK(err_code);
             }
+            break;
+									
+			  case BLE_EVT_TX_COMPLETE:
+            if(transmitMode == 0x12) {
+								transmit_external_flash_data();
+						} else if(transmitMode == 0x10) {
+							  transmit_internal_memory_data();
+						}
             break;
 
         default:
