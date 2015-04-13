@@ -40,7 +40,7 @@
 
 #define WAKEUP_BUTTON_PIN               BUTTON_SELECT                               /**< Button used to wake up the application. */
 
-#define DEVICE_NAME                     "WELP_UTIL"                               /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "WELOOP_UTIL"                               /**< Name of device. Will be included in the advertising data. */
 
 #define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
@@ -108,7 +108,7 @@ void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p
 
 /**@brief       Assert macro callback function.
  *
- * @details     This function will be called in case of an assert in the SoftDevice.
+ * @details     This function will be called in case of  an assert in the SoftDevice.
  *
  * @warning     This handler is an example only and does not fit a final product. You need to
  *              analyze how your product is supposed to react in case of Assert.
@@ -284,8 +284,8 @@ void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
 			
 			  transmit_external_flash_data();
 		} else if (p_data[0] == 0x10) {
-			  transmitCurrentAddress = (p_data[1]<<16) | p_data[2] << 8 | p_data[3];
-			  uint32_t size = (p_data[4]<<16) | p_data[5] << 8 | p_data[6];
+			  transmitCurrentAddress = (p_data[1]<<24 | p_data[2]<<16) | p_data[3] << 8 | p_data[4];
+			  uint32_t size = (p_data[5]<<24 | p_data[6]<<16) | p_data[7] << 8 | p_data[8];
 			  transmitEndAddress = transmitCurrentAddress + size;
 			  transmitMode = 0x10;
 			
